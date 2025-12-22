@@ -1,0 +1,2 @@
+Solution_ID,pv,gas_boiler,gas_chp,heat_pump_air,heat_pump_ground,battery_storage,thermal_storage,Cost,Emissions_kg,Resilience,Knee_Cost_Emissions,Knee_Cost_Resilience,Knee_Emissions_Resilience,Ideal_Distance
+0,1.4362576381784165,1.9860959070226865,0.20186050388684953,0.31026371634856265,2.0715282930133205,2.8937679269147742,2.4272542730590576,0.0,857173.0152385747,0.5944604584328301,YES,YES,YES,YES

@@ -1,0 +1,32 @@
+======================================================================
+OPTIMIZATION CONFIGURATION
+======================================================================
+Version: 2.0 (6-Bus System with Parallel Execution)
+Run Date: 2025-12-22 00:36:35
+Data Source: Real 2020.xlsx (75% utilization)
+Solver: gurobi
+Algorithm: NSGA-II (Parallelized)
+Generations: 10
+Population: 20
+Parallel Workers: 4 cores
+Total Evaluations: 200
+Timesteps: 8760
+Technologies: 8
+======================================================================
+
+FEATURES:
+  + 6-bus configuration (electricity, pv, heat, heat_grid, gas, hydrogen)
+  + Time-varying grid CO2 emissions
+  + Temperature data
+  + Seasonal gas prices
+  + Feed-in tariff
+  + Temperature-dependent heat pump efficiency
+  + Dynamic capacity limits
+  + PV routing and grid export tracking
+  + District heating pump modeling
+
+Objectives:
+  1. Minimize Total Cost
+  2. Minimize CO2 Emissions
+  3. Maximize Resilience
+======================================================================

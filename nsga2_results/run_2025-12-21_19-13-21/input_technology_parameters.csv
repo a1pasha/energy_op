@@ -1,0 +1,11 @@
+,capacity_kw,capex_per_kw_year,opex_per_kw_year,efficiency,disparity_factor,dispatchable,co2_emissions_kg_per_kwh,storage_capacity_kwh
+gas_boiler,3000.0,6.086753859396779,0.0,0.95,0.25,1,0.202,
+gas_chp,2000.0,112.8254722502441,0.0,0.38,0.3,1,0.202,
+heat_pump_air,2000.0,61.60205345958263,0.0,2.8,0.75,1,0.0,
+heat_pump_ground,1000.0,124.9272412816711,0.0,3.8,0.8,1,0.0,
+electrolyser,1000.0,172.3134362505808,0.0,0.62,0.85,1,0.0,
+pv,2442.944166,101.22043842,0.0,1.0,1.0,0,0.0,
+grid_electricity,100000.0,0.0,0.0,1.0,0.0,1,0.401,
+thermal_storage,,,,0.998001,0.7,0,0.0,70000.0
+battery_storage,,,,0.9025,0.7,0,0.0,10000.0
+hydrogen_storage,,,,0.990025,0.7,0,0.0,60000.0

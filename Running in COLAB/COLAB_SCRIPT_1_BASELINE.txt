@@ -1,0 +1,97 @@
+=================================================================
+GOOGLE COLAB SCRIPT 1 - BASELINE RUN
+Account: Your main Google account
+Run: 150 gen, 80 pop, seed=42 (default)
+=================================================================
+
+CELL 1: Mount Drive
+-------------------
+from google.colab import drive
+drive.mount('/content/drive')
+
+
+CELL 2: Extract Files
+-------------------
+import zipfile
+import os
+
+zip_path = '/content/drive/MyDrive/Energy_Optimization/optimization.zip'
+extract_to = '/content/optimization'
+
+with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    zip_ref.extractall(extract_to)
+
+os.chdir('/content/optimization/Multi-Object NSGA2 optimization')
+print("✓ Files extracted")
+!ls
+
+
+CELL 3: Install Dependencies
+-------------------
+!apt-get install -y glpk-utils
+!pip install pandas numpy matplotlib pyomo pymoo scikit-learn
+!pip install oemof.solph==0.5.1
+
+
+CELL 4: Force GLPK (Remove Gurobi)
+-------------------
+!pip uninstall -y gurobipy
+print("✓ Gurobi removed, will use GLPK")
+
+
+CELL 5: Run Baseline Optimization (150 gen, 80 pop, seed=42)
+-------------------
+import subprocess
+import os
+
+os.chdir('/content/optimization/Multi-Object NSGA2 optimization')
+
+print("Starting BASELINE run: 150 gen, 80 pop, seed=42")
+
+inputs = "150\n80\n2\n"
+
+with open('run_optimization.sh', 'w') as f:
+    f.write('#!/bin/bash\n')
+    f.write(f'echo "{inputs}" | python main.py > optimization.log 2>&1\n')
+
+!chmod +x run_optimization.sh
+!nohup ./run_optimization.sh &
+
+print("✓ Optimization started in background")
+print("Estimated: 10-12 hours")
+
+
+CELL 6: Monitor Progress
+-------------------
+import time
+import glob
+import os
+
+print("Checking every 30 minutes...")
+
+while True:
+    results = glob.glob('nsga2_results/run_*')
+    if results:
+        latest = sorted(results)[-1]
+        if os.path.exists(f"{latest}/pareto_solutions.csv"):
+            print("\n✓✓✓ COMPLETE! ✓✓✓")
+            break
+        files = len(os.listdir(latest))
+        print(f"\r⏳ Running... {latest} ({files} files)", end='', flush=True)
+    else:
+        print("\r⏳ Starting...", end='', flush=True)
+    time.sleep(1800)
+
+
+CELL 7: Download Results
+-------------------
+import shutil
+from google.colab import files
+
+results_folders = sorted(glob.glob('nsga2_results/run_*'))
+latest = results_folders[-1]
+
+shutil.make_archive('baseline_results', 'zip', latest)
+files.download('baseline_results.zip')
+
+print(f"✓ Downloaded: {latest}")
