@@ -37,7 +37,7 @@ def create_energy_system(timeseries_data, date_time_index, tech_params,
     Returns:
         tuple: (energy_system, model)
     """
-    print("\nCreating 6-bus energy system...")
+    print("\nCreating 5-bus energy system...")
     print(f"  Time-varying HP efficiency: {use_time_varying_hp}")
     print(f"  Time-varying grid emissions: {use_time_varying_emissions}")
     print(f"  PV routing bus: ENABLED")
@@ -84,7 +84,7 @@ def create_energy_system(timeseries_data, date_time_index, tech_params,
         label="pv",
         outputs={pv_bus: Flow(  # Changed from electricity_bus to pv_bus
             nominal_value=tech_params.loc["pv", "capacity_kw"],
-            variable_costs=(tech_params.loc["pv", "capex_per_kw_year"] + tech_params.loc["pv", "opex_per_kw_year"]) / 8760,
+            variable_costs=0,  # FIXED: CAPEX/OPEX now only in utils.py, not double-counted
             max=timeseries_data["solar_availability"].values.tolist()
         )}
     )
@@ -127,7 +127,7 @@ def create_energy_system(timeseries_data, date_time_index, tech_params,
         inputs={gas_bus: Flow()},
         outputs={heat_bus: Flow(
             nominal_value=tech_params.loc["gas_boiler", "capacity_kw"],
-            variable_costs=(tech_params.loc["gas_boiler", "capex_per_kw_year"] + tech_params.loc["gas_boiler", "opex_per_kw_year"]) / 8760
+            variable_costs=0  # FIXED: CAPEX/OPEX now only in utils.py, not double-counted
         )},
     )
     gas_boiler.conversion_factors = {
@@ -142,7 +142,7 @@ def create_energy_system(timeseries_data, date_time_index, tech_params,
         outputs={
             electricity_bus: Flow(
                 nominal_value=tech_params.loc["gas_chp", "capacity_kw"],
-                variable_costs=(tech_params.loc["gas_chp", "capex_per_kw_year"] + tech_params.loc["gas_chp", "opex_per_kw_year"]) / 8760
+                variable_costs=0  # FIXED: CAPEX/OPEX now only in utils.py, not double-counted
             ),
             heat_bus: Flow(
                 nominal_value=tech_params.loc["gas_chp", "capacity_kw"] * 1.2
@@ -166,19 +166,17 @@ def create_energy_system(timeseries_data, date_time_index, tech_params,
         # Get time-varying COP and capacity limit
         hp_air_cop_series = timeseries_data['hp_air_cop'].values.tolist()
 
-        # For oemof, we need to handle conversion factors differently
-        # Since time-varying efficiency isn't directly supported in basic Flow,
-        # we can approximate by adjusting variable costs inversely with COP
+        # LIMITATION: oemof basic Transformer doesn't support time-varying conversion factors
+        # Using average COP means electricity consumption is approximate (not exact at each timestep)
+        # This is acceptable for annual optimization where total energy balance matters more
+        # Dynamic capacity limits (hp_air_max) capture operational constraints
 
-        # Calculate adjusted variable costs (higher cost when COP is lower)
-        base_opex = tech_params.loc["heat_pump_air", "opex_per_kw_year"] / 8760
+        # FIXED: Remove OPEX from variable_costs (counted in utils.py fixed infrastructure)
         avg_cop = timeseries_data['hp_air_cop'].mean()
 
-        # Adjust costs inversely with COP to simulate efficiency
-        # When COP is low, costs are high; when COP is high, costs are low
-        cop_adjustment = avg_cop / timeseries_data['hp_air_cop'].values
-        adjusted_costs = base_opex * cop_adjustment
-        adjusted_costs = adjusted_costs.tolist()
+        # Grid electricity variable_costs already account for HP consumption
+        # No need to add OPEX here (would be double-counting)
+        adjusted_costs = 0  # OPEX handled in utils.py
 
         # Get dynamic capacity limits if available
         if 'hp_air_max' in timeseries_data.columns:
@@ -191,7 +189,7 @@ def create_energy_system(timeseries_data, date_time_index, tech_params,
             inputs={electricity_bus: Flow()},
             outputs={heat_bus: Flow(
                 nominal_value=tech_params.loc["heat_pump_air", "capacity_kw"],
-                variable_costs=adjusted_costs,  # Time-varying costs reflect COP
+                variable_costs=0,  # FIXED: OPEX now only in utils.py, not double-counted
                 max=hp_air_max_series  # Dynamic capacity limit
             )}
         )
@@ -209,7 +207,7 @@ def create_energy_system(timeseries_data, date_time_index, tech_params,
             inputs={electricity_bus: Flow()},
             outputs={heat_bus: Flow(
                 nominal_value=tech_params.loc["heat_pump_air", "capacity_kw"],
-                variable_costs=(tech_params.loc["heat_pump_air", "capex_per_kw_year"] + tech_params.loc["heat_pump_air", "opex_per_kw_year"]) / 8760
+                variable_costs=0  # FIXED: CAPEX/OPEX now only in utils.py, not double-counted
             )}
         )
         heat_pump_air.conversion_factors = {
@@ -224,17 +222,16 @@ def create_energy_system(timeseries_data, date_time_index, tech_params,
         hp_geo_cop_series = timeseries_data['hp_geo_cop'].values.tolist()
         avg_cop_geo = timeseries_data['hp_geo_cop'].mean()
 
-        base_opex_geo = tech_params.loc["heat_pump_ground", "opex_per_kw_year"] / 8760
-        cop_adjustment_geo = avg_cop_geo / timeseries_data['hp_geo_cop'].values
-        adjusted_costs_geo = base_opex_geo * cop_adjustment_geo
-        adjusted_costs_geo = adjusted_costs_geo.tolist()
+        # FIXED: Remove OPEX from variable_costs (counted in utils.py fixed infrastructure)
+        # Grid electricity variable_costs already account for HP consumption
+        adjusted_costs_geo = 0  # OPEX handled in utils.py
 
         heat_pump_ground = Transformer(
             label="heat_pump_ground",
             inputs={electricity_bus: Flow()},
             outputs={heat_bus: Flow(
                 nominal_value=tech_params.loc["heat_pump_ground", "capacity_kw"],
-                variable_costs=adjusted_costs_geo
+                variable_costs=0  # FIXED: OPEX now only in utils.py, not double-counted
             )}
         )
         heat_pump_ground.conversion_factors = {
@@ -250,7 +247,7 @@ def create_energy_system(timeseries_data, date_time_index, tech_params,
             inputs={electricity_bus: Flow()},
             outputs={heat_bus: Flow(
                 nominal_value=tech_params.loc["heat_pump_ground", "capacity_kw"],
-                variable_costs=(tech_params.loc["heat_pump_ground", "capex_per_kw_year"] + tech_params.loc["heat_pump_ground", "opex_per_kw_year"]) / 8760
+                variable_costs=0  # FIXED: CAPEX/OPEX now only in utils.py, not double-counted
             )}
         )
         heat_pump_ground.conversion_factors = {
@@ -280,9 +277,9 @@ def create_energy_system(timeseries_data, date_time_index, tech_params,
         outputs={heat_grid_bus: Flow(nominal_value=10000)}  # Heat to distribution network
     )
     district_heating_pump.conversion_factors = {
-        heat_bus: 1.0,  # 1 kWh heat in
-        electricity_bus: 0.015,  # 1.5% electricity for pumping
-        heat_grid_bus: 0.98  # 98% heat out (2% network losses)
+        heat_bus: 1.0 / 0.98,  # FIXED: Need 1.02 kWh heat to deliver 1 kWh (2% losses)
+        electricity_bus: 0.015,  # 1.5% electricity for pumping per kWh delivered
+        heat_grid_bus: 1.0  # 1 kWh heat delivered (normalized output)
     }
 
     # ========================================================================

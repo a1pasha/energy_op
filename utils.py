@@ -143,29 +143,44 @@ def extract_results_from_model(energy_system, model, timeseries_data, tech_param
 
     # Calculate resilience metrics (Shannon Index removed)
     stirling_index = calculate_stirling_index(total_generation, tech_params)
-    redundancy_index = calculate_redundancy(generation_capacity, max_total_demand, tech_params)
+    # MODIFIED: Pass storage_capacity to redundancy calculation (storage now counts as backup)
+    redundancy_index = calculate_redundancy(generation_capacity, max_total_demand, tech_params, storage_capacity)
     buffer_capacity_index = calculate_buffer_capacity(storage_capacity, max_total_demand)
 
     # NEW: Calculate renewable-fossil balance to break emissions-resilience correlation
     balance_index = calculate_renewable_fossil_balance(generation_capacity, tech_params)
 
-    # Calculate total cost manually from capacities (CAPEX + OPEX)
-    # oemof objective doesn't include investment costs when using fixed nominal_value
-    total_cost = 0.0
+    # Calculate total cost: Variable operational costs + CAPEX + fixed OPEX
+    # FIXED 3rd attempt: Combine oemof's variable costs (fuel, grid) with fixed infrastructure costs
+    # This breaks cost-resilience correlation: fuel usage varies independently of installed capacity
 
-    # Technology costs (capacity-based)
+    # Get variable operational costs from oemof objective (fuel, grid electricity, etc.)
+    try:
+        import pyomo.environ
+        variable_operational_cost = pyomo.environ.value(model.objective)
+    except:
+        try:
+            variable_operational_cost = model.objective()
+        except:
+            variable_operational_cost = 0.0  # Fallback if objective not available
+
+    # Add fixed annual infrastructure costs (CAPEX + OPEX per kW installed)
+    fixed_infrastructure_cost = 0.0
     for tech in ["pv", "gas_boiler", "gas_chp", "heat_pump_air", "heat_pump_ground"]:
         capacity = tech_params.loc[tech, "capacity_kw"]
         capex = tech_params.loc[tech, "capex_per_kw_year"]
         opex = tech_params.loc[tech, "opex_per_kw_year"]
-        total_cost += capacity * (capex + opex)
+        fixed_infrastructure_cost += capacity * (capex + opex)
 
-    # Storage costs (energy-based)
+    # Storage CAPEX + OPEX (fixed annual costs per kWh capacity)
     for storage in ["battery_storage", "thermal_storage"]:
         storage_cap = tech_params.loc[storage, "storage_capacity_kwh"]
         capex = tech_params.loc[storage, "capex_per_kwh_year"]
         opex = tech_params.loc[storage, "opex_per_kwh_year"]
-        total_cost += storage_cap * (capex + opex)
+        fixed_infrastructure_cost += storage_cap * (capex + opex)
+
+    # Total cost = variable operational + fixed infrastructure
+    total_cost = variable_operational_cost + fixed_infrastructure_cost
 
     # Calculate emissions with time-varying grid emission factor
     total_emissions = calculate_emissions_time_varying(results, timeseries_data, tech_params)

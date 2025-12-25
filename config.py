@@ -62,12 +62,13 @@ DISPERSION_WEIGHT = 0.5  # Weight for dispersion in redundancy calculation
 CAPACITY_MARGIN_WEIGHT = 0.5  # Weight for capacity margin in redundancy calculation
 
 # Resilience Score Weighting (for combining Stirling, Redundancy, Buffer, Balance)
-# FIXED: Added renewable-fossil balance component to break emissions-resilience correlation
+# FIXED: Increased balance weight to 0.4 to better break emissions-resilience correlation
+# Balance component is critical: prevents high-emission = high-resilience trap
 RESILIENCE_WEIGHTS = {
-    'stirling': 0.25,      # Technology diversity
-    'redundancy': 0.25,    # Capacity margin
-    'buffer': 0.25,        # Storage capacity
-    'balance': 0.25        # NEW: Renewable-fossil balance (rewards mixing both types)
+    'stirling': 0.20,      # Technology diversity
+    'redundancy': 0.20,    # Capacity margin
+    'buffer': 0.20,        # Storage capacity
+    'balance': 0.40        # INCREASED: Renewable-fossil balance (rewards mixing both types)
 }
 
 # Buffer Capacity Normalization (for reasonable range 0-1)

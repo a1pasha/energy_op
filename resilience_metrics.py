@@ -43,10 +43,13 @@ def calculate_stirling_index(generation_mix, tech_params):
     return stirling_index
 
 
-def calculate_redundancy(generation_capacity, demand, tech_params):
+def calculate_redundancy(generation_capacity, demand, tech_params, storage_capacity=None):
     """
     Calculate redundancy index based on MGA paper Equation 3
     R = (1 - P_demand/P_inst)^α · Σ(P_i/P_total)^(2·β)
+
+    MODIFIED: Now includes storage capacity as backup power source
+    Storage energy (kWh) converted to equivalent power (kW) using 4-hour discharge assumption
 
     Grid_electricity is already excluded from generation_capacity dict in utils.py
 
@@ -54,6 +57,7 @@ def calculate_redundancy(generation_capacity, demand, tech_params):
         generation_capacity (dict): Dictionary of {technology: capacity} (excludes grid)
         demand (float): Peak demand in kW
         tech_params (DataFrame): Technology parameters with dispatchable flag
+        storage_capacity (dict): Optional dict of {storage_type: capacity_kwh}
 
     Returns:
         float: Redundancy index
@@ -66,11 +70,27 @@ def calculate_redundancy(generation_capacity, demand, tech_params):
     # Total secured installed capacity (dispatchable only)
     P_inst_total = sum([generation_capacity[tech] for tech in dispatchable_techs])
 
+    # NEW: Add storage as equivalent backup power capacity
+    # Convert storage energy (kWh) to power (kW) assuming 4-hour discharge duration
+    # This is reasonable: storage can provide backup power like dispatchable generators
+    if storage_capacity is not None:
+        STORAGE_DISCHARGE_HOURS = 4.0  # Typical discharge duration for backup
+        storage_power_equivalent = {}
+        for storage_type, energy_kwh in storage_capacity.items():
+            if energy_kwh > 0:
+                power_kw = energy_kwh / STORAGE_DISCHARGE_HOURS
+                storage_power_equivalent[storage_type] = power_kw
+                P_inst_total += power_kw
+        # Merge storage into dispatchable for dispersion calculation
+        dispatchable_techs = list(dispatchable_techs) + list(storage_power_equivalent.keys())
+        generation_capacity = {**generation_capacity, **storage_power_equivalent}
+
     if P_inst_total == 0 or demand == 0:
         return 0
 
     # First term: (1 - P_demand/P_inst)^α
-    capacity_margin_term = (1 - demand / P_inst_total)**ALPHA if P_inst_total > demand else 0
+    # FIXED: Allow negative values when capacity < demand (penalty for insufficient capacity)
+    capacity_margin_term = (1 - demand / P_inst_total)**ALPHA
 
     # Second term: Σ(P_i/P_total)^(2·β) - distribution of capacity
     dispersion_sum = 0
